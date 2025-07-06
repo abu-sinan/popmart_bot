@@ -1,3 +1,4 @@
+![Pop Mart Auto Purchase Bot](assets/thumbnail.png)
 # 📦 Pop Mart Auto Purchase Bot
 
 A Python automation bot that logs into your Pop Mart account, monitors product availability, sets quantity, and completes the checkout process — all automatically.
