@@ -1,0 +1,35 @@
+login_url: "https://www.popmart.com/user/login"
+log_level: "INFO"
+headless: true
+max_retries: 3
+delay_range: [60, 120]
+
+products:
+  - url: "https://www.popmart.com/us/products/1584/LABUBU-%C3%97-PRONOUNCE---WINGS-OF-FORTUNE-Vinyl-Plush-Hanging-Card"
+    quantity: 2
+  - url: "https://www.popmart.com/us/products/1580/LABUBU-%C3%97-PRONOUNCE---WINGS-OF-FANTASY-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/578/LABUBU-Time-to-chill-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1607/THE-MONSTERS---ANGEL-IN-CLOUDS-Vinyl-Face-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/890/THE-MONSTERS---BEST-OF-LUCK-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1371/THE-MONSTERS---FLIP-WITH-ME-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1897/THE-MONSTERS-Let's-Checkmate-Series-Vinyl-Plush-Hanging-Card"
+    quantity: 2
+  - url: "https://www.popmart.com/us/products/1898/THE-MONSTERS-Let's-Checkmate-Series-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/676/THE-MONSTERS---DRESS-BE-LATTE-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/878/THE-MONSTERS---I-FOUND-YOU-Vinyl-Face-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/922/THE-MONSTERS-Catch-Me-If-You-Like-Me-Series-Vinyl-Doll-Gift-Box"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1505/Happy-Halloween-Party-Series-Sitting-Pumpkin-Vinyl-Plush-Pendant"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1012/LABUBU-%C3%97-PRONOUNCE-BE-FANCY-NOW-Vinyl-Plush-Doll"
+    quantity: 1
+  - url: "https://www.popmart.com/us/products/1060/THE-MONSTERS-FALL-IN-WILD-SERIES-Vinyl-Plush-Doll"
+    quantity: 1
