@@ -1,4 +1,4 @@
-login_url: "https://www.popmart.com/user/login"
+login_url: "https://www.popmart.com/us/user/login"
 log_level: "INFO"
 headless: true
 max_retries: 3
