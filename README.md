@@ -1,5 +1,5 @@
 ![Pop Mart Bot](https://github.com/abu-sinan/popmart_bot/blob/main/assets/thumbnail.png)
-# 🛍️ Pop Mart Checkout Bot
+# 🛍️ Pop Mart Auto Purchase Bot
 
 A fast, stealthy, and automated checkout bot for [PopMart.com](https://www.popmart.com/us), built with Python + Playwright.
 
