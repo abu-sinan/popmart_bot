@@ -1,0 +1,14 @@
+[Unit]
+Description=Pop Mart Bot Service
+After=network.target
+
+[Service]
+User=your_linux_user
+WorkingDirectory=/absolute/path/to/your/bot
+ExecStart=/usr/bin/python3 /absolute/path/to/your/bot/bot.py
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

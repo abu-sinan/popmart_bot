@@ -1,0 +1,16 @@
+{
+  "headless": true,
+  "max_retries": 5,
+  "products": [
+    {
+      "url": "https://www.popmart.com/us/products/1584/LABUBU-%C3%97-PRONOUNCE---WINGS-OF-FORTUNE-Vinyl-Plush-Hanging-Card",
+      "size": "Single box",
+      "quantity": 2
+    },
+    {
+      "url": "https://www.popmart.com/us/products/1580/LABUBU-%C3%97-PRONOUNCE---WINGS-OF-FANTASY-Vinyl-Plush-Doll",
+      "size": "Whole set",
+      "quantity": 2
+    }
+  ]
+}
