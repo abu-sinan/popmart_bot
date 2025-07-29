@@ -1,203 +1,153 @@
-import time
-import yaml
-import random
+import asyncio
+import json
 import logging
-import sys
 import os
+import random
 from dotenv import load_dotenv
+from playwright.async_api import async_playwright
+from playwright_stealth import stealth_async
+import aiohttp
 from logging.handlers import RotatingFileHandler
-from playwright.sync_api import sync_playwright
 
-# Load .env credentials
+# Load environment variables
 load_dotenv()
+EMAIL = os.getenv("EMAIL")
+PASSWORD = os.getenv("PASSWORD")
+TG_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TG_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# Logging setup
-def setup_logging(log_level="INFO"):
-    handler = RotatingFileHandler("popmart_bot.log", maxBytes=2 * 1024 * 1024, backupCount=3)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
-    handler.setFormatter(formatter)
+# Load config
+with open("config.json", "r") as f:
+    CONFIG = json.load(f)
 
-    logger = logging.getLogger()
-    logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
-    logger.addHandler(handler)
+MAX_RETRIES = CONFIG.get("max_retries", 5)
+HEADLESS = CONFIG.get("headless", True)
 
-# Load and validate config
-def load_config():
-    with open("config.yaml", "r") as f:
-        return yaml.safe_load(f)
+# Logging with rotation
+logger = logging.getLogger("bot")
+logger.setLevel(logging.INFO)
+handler = RotatingFileHandler("log.txt", maxBytes=512000, backupCount=3)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-def validate_config(config):
-    if "login_url" not in config or "products" not in config:
-        raise ValueError("❌ 'login_url' and 'products' are required in config.yaml")
-    if not isinstance(config["products"], list) or not config["products"]:
-        raise ValueError("❌ 'products' must be a non-empty list.")
-    for p in config["products"]:
-        if "url" not in p or "quantity" not in p:
-            raise ValueError("❌ Each product must have 'url' and 'quantity'.")
+# Telegram alerts
+async def send_telegram(msg):
+    if not TG_TOKEN or not TG_CHAT_ID:
+        return
+    url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
+    async with aiohttp.ClientSession() as session:
+        await session.post(url, data={"chat_id": TG_CHAT_ID, "text": msg})
 
-# Login
-def login(page):
-    email = os.getenv("EMAIL")
-    password = os.getenv("PASSWORD")
-    if not email or not password:
-        raise Exception("❌ EMAIL and PASSWORD must be set in .env")
-
-    page.goto(config["login_url"])
-    page.wait_for_load_state("networkidle")
-    time.sleep(random.uniform(1, 2))
-
-    page.fill('input[placeholder="Enter your e-mail address"]', email)
-    page.click('button:has-text("CONTINUE")')
-    page.wait_for_timeout(2000)
-    page.fill('input[placeholder="Enter your password"]', password)
-    page.click('button:has-text("SIGN IN")')
-    page.wait_for_load_state("networkidle")
-    logging.info("✅ Logged in")
-
-# Quantity handling
-def set_quantity(page, quantity):
-    try:
-        qty_input = page.locator('input[type="number"]')
-        if qty_input.is_visible():
-            qty_input.fill(str(quantity))
-            logging.info(f"🔢 Quantity set to {quantity}")
-            return
-        plus_button = page.locator('button[aria-label="Increase quantity"]')
-        for _ in range(quantity - 1):
-            if plus_button.is_disabled():
-                break
-            plus_button.click()
-            time.sleep(0.2)
-        logging.info("🔢 Quantity set using + button")
-    except Exception as e:
-        logging.warning(f"⚠️ Quantity error: {e}")
-
-# Simulate scroll
-def simulate_human_behavior(page):
-    page.mouse.wheel(0, random.randint(300, 800))
-    time.sleep(random.uniform(0.5, 1.5))
-
-# Add to bag and open cart
-def add_to_bag(page):
-    if page.locator('button:has-text("Add to Bag")').is_visible():
-        page.click('button:has-text("Add to Bag")')
-        logging.info("🛒 Added to Bag")
-        time.sleep(2)
-        if page.locator('button:has-text("VIEW")').is_visible():
-            page.click('button:has-text("VIEW")')
-            logging.info("👁️ Viewing Bag")
-            page.wait_for_load_state("networkidle")
-        else:
-            logging.warning("⚠️ VIEW button not found")
-    else:
-        logging.warning("❌ Add to Bag not found")
-
-# Checkout steps
-def proceed_to_checkout(page):
-    if page.locator('button:has-text("CHECKOUT")').is_visible():
-        page.click('button:has-text("CHECKOUT")')
-        logging.info("💳 Checkout clicked")
-        page.wait_for_load_state("networkidle")
-    else:
-        raise Exception("❌ CHECKOUT not found")
-
-def proceed_to_payment(page):
-    if page.locator('button:has-text("PROCEED TO PAY")').is_visible():
-        page.click('button:has-text("PROCEED TO PAY")')
-        logging.info("📦 Proceed to Pay")
-        page.wait_for_load_state("networkidle")
-    else:
-        raise Exception("❌ PROCEED TO PAY not found")
-
-def submit_payment(page):
-    if page.locator('button:has-text("Pay")').is_visible():
-        page.click('button:has-text("Pay")')
-        logging.info("💰 Payment submitted")
-    else:
-        raise Exception("❌ Pay button not found")
-
-# Core product logic
-def check_and_buy(page, product, max_retries):
-    url = product["url"]
-    quantity = product.get("quantity", 1)
-
-    for attempt in range(max_retries):
+# Safe click with retry
+async def retry_click(page, selector, retries=5, delay=1):
+    for _ in range(retries):
         try:
-            logging.info(f"🔍 Checking: {url} | Qty: {quantity} | Try: {attempt+1}")
-            page.goto(url)
-            page.wait_for_load_state("networkidle")
-            simulate_human_behavior(page)
-
-            if page.locator("text=Out of Stock").is_visible():
-                logging.info("❌ Out of Stock")
-                return False
-
-            if page.locator('button:has-text("Whole Set")').is_visible():
-                page.click('button:has-text("Whole Set")')
-                logging.info("📦 Whole Set Selected")
-
-            set_quantity(page, quantity)
-            add_to_bag(page)
-            proceed_to_checkout(page)
-            proceed_to_payment(page)
-            submit_payment(page)
+            await page.locator(selector).click(timeout=5000)
             return True
-        except Exception as e:
-            logging.error(f"❌ Error on attempt {attempt+1}: {e}")
-            time.sleep(5)
+        except:
+            await asyncio.sleep(delay)
     return False
 
-# Main loop
-def main():
-    global config
-    config = load_config()
-    validate_config(config)
-    setup_logging(config.get("log_level", "INFO"))
-
-    if "--debug" in sys.argv:
-        config["headless"] = False
-        logging.info("🐞 Debug mode: browser visible")
-
-    products = config["products"]
-    remaining = products.copy()
-    delay_min, delay_max = config.get("delay_range", [60, 180])
-    max_retries = config.get("max_retries", 3)
-    headless = config.get("headless", True)
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=headless)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120",
-            viewport={"width": 1280, "height": 800}
+# Main bot logic
+async def run_bot():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=HEADLESS)
+        context = await browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 720},
+            locale="en-US"
         )
-        page = context.new_page()
-        login(page)
+        page = await context.new_page()
+        await stealth_async(page)
 
-        while remaining:
-            for product in remaining[:]:
-                try:
-                    if check_and_buy(page, product, max_retries):
-                        remaining.remove(product)
-                        logging.info(f"✅ Purchased: {product['url']}")
-                    else:
-                        logging.info(f"🔁 Retry later: {product['url']}")
-                except Exception as e:
-                    logging.error(f"⚠️ Product check failed: {e}")
-                time.sleep(random.uniform(5, 15))
-
-            if remaining:
-                wait_time = random.uniform(delay_min, delay_max)
-                logging.info(f"⏳ Waiting {int(wait_time)}s")
-                time.sleep(wait_time)
-
-        logging.info("🎉 All products purchased")
-        browser.close()
-
-# Safe restart loop
-if __name__ == "__main__":
-    while True:
         try:
-            main()
+            await page.goto("https://www.popmart.com/us", timeout=60000)
+            await retry_click(page, "text=United States")
+            await retry_click(page, ".policy_acceptBtn__ZNU71")
+
+            # Smart login check
+            if await page.locator('a[href*="/us/user/login"]').is_visible():
+                await send_telegram("🔐 Logging in...")
+                await retry_click(page, 'a[href*="/us/user/login"]')
+                await page.fill("#email", EMAIL)
+                await page.click("text=CONTINUE")
+                await page.wait_for_selector("#password", timeout=15000)
+                await page.fill("#password", PASSWORD)
+                await page.click("text=SIGN IN")
+                await page.wait_for_timeout(3000)
+                await send_telegram("✅ Login successful")
+            else:
+                await send_telegram("✅ Already logged in")
+
+            # Monitor loop
+            while True:
+                for product in CONFIG["products"]:
+                    try:
+                        await page.goto(product["url"], timeout=60000)
+
+                        if not await page.locator("text=ADD TO BAG").is_visible():
+                            msg = f"❌ Out of stock: {product['url']}"
+                            logger.warning(msg)
+                            await send_telegram(msg)
+                            continue
+
+                        await send_telegram(f"🟢 In Stock: {product['url']}")
+                        await send_telegram("🛒 Adding to bag...")
+
+                        # Select size
+                        size = product["size"].lower()
+                        if "single" in size:
+                            await retry_click(page, "text=Single box")
+                        elif "whole" in size:
+                            await retry_click(page, "text=Whole set")
+
+                        # Set quantity
+                        for _ in range(product["quantity"] - 1):
+                            await retry_click(page, ".index_countButton__mJU5Q >> text=+")
+
+                        # Add to bag
+                        await retry_click(page, "text=ADD TO BAG")
+                        await page.wait_for_selector("text=Added To Bag", timeout=10000)
+                        await send_telegram("✅ Added to bag. Proceeding to checkout...")
+
+                        # Checkout steps
+                        await retry_click(page, "text=View Bag")
+                        await retry_click(page, "text=Select all")
+                        await retry_click(page, "text=CHECK OUT")
+                        await retry_click(page, "text=PROCEED TO PAY", delay=2)
+
+                        await page.wait_for_load_state("networkidle")
+                        await asyncio.sleep(2)
+
+                        # Handle "Oops"
+                        if await page.locator("text=High order volume").is_visible():
+                            await page.click("text=OK")
+                            raise Exception("Oops! High order volume.")
+
+                        # Select credit card and pay
+                        await send_telegram("💳 Paying with credit card...")
+                        await retry_click(page, "text=CreditCard")
+                        await retry_click(page, 'button:has-text("Pay")')
+
+                        msg = f"🎉 Success! Purchased: {product['url']}"
+                        logger.info(msg)
+                        await send_telegram(msg)
+
+                    except Exception as e:
+                        msg = f"⚠️ Failed: {product['url']} - {str(e)}"
+                        logger.error(msg)
+                        await send_telegram(msg)
+                    await asyncio.sleep(1)
+
+                logger.info("🔁 Sleeping 5 minutes before next round...")
+                await asyncio.sleep(300)
+
         except Exception as e:
-            logging.error(f"🔁 Bot crashed: {e}")
-            time.sleep(10)
+            msg = f"❌ Fatal Error: {str(e)}"
+            logger.error(msg)
+            await send_telegram(msg)
+        await browser.close()
+
+if __name__ == "__main__":
+    asyncio.run(run_bot())
