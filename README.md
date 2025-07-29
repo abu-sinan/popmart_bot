@@ -1,54 +1,52 @@
-![Pop Mart Auto Purchase Bot](assets/thumbnail.png)
-# 📦 Pop Mart Auto Purchase Bot
+![Pop Mart Bot](https://github.com/abu-sinan/popmart_bot/blob/main/assets/thumbnail.png)
+# 🛍️ Pop Mart Checkout Bot
 
-A Python automation bot that logs into your Pop Mart account, monitors product availability, sets quantity, and completes the checkout process — all automatically.
-
----
-
-## 🚀 Features
-
-- 🔐 Secure login using `.env`
-
-- 🛒 Auto-selects quantity and adds to cart
-
-- 💳 Navigates full checkout and payment flow
-
-- 🔁 Retry logic with customizable attempts
-
-- 🧠 Human-like scrolling to avoid detection
-
-- ⚙️ Configurable via `config.yaml`
-
-- 🧪 Debug mode with visible browser option
-
-- 📂 Auto-logs activity in `popmart_bot.log`
+A fast, stealthy, and automated checkout bot for [PopMart.com](https://www.popmart.com/us), built with Python + Playwright.
 
 ---
 
-## 📁 Folder Structure
+## ✅ Features:
+
+- Full browser automation using [Playwright](https://playwright.dev/)
+
+- Stealth mode to bypass anti-bot detection
+
+- Smart login check (only logs in if needed)
+
+- Fresh session on every run (no cookie reuse)
+
+- Detects product stock status
+
+- Automatically adds to bag, checks out, and pays
+
+- Telegram alerts for every action (stock, success, failure, etc.)
+
+- Log rotation support
+
+- Supports unlimited product links
+
+- Runs 24/7 with optional systemd service
+
+---
+
+## 📁 Project Structure
 
 ```
 popmart_bot/
-├── popmart_bot.py         # Main bot script
-├── config.yaml            # Product and settings config
-├── .env                   # Login credentials
-├── requirements.txt       # Dependencies
-└── README.md              # This file
+├── bot.py                   # Main automation script
+├── config.json              # Product list & settings
+├── .env                     # Secrets (email, password, Telegram)
+├── requirements.txt         # Python dependencies
+├── run_forever.sh           # (Optional) restart loop for manual runs
+├── log.txt                  # Logs (auto-rotating)
+├── .gitignore               # Git exclusions
+└── systemd/
+    └── popmart-bot.service  # systemd service file for auto-start
 ```
 
 ---
 
-## 🧪 Requirements
-
-- Python 3.9+
-
-- Playwright
-
-- `pip install -r requirements.txt`
-
----
-
-## 🛠️ Setup Instructions
+⚙️ Installation
 
 ### 1. Clone the Repo or Upload Your Files
 
@@ -57,80 +55,137 @@ git clone https://github.com/abu-sinan/popmart_bot.git
 cd popmart_bot
 ```
 
-### 2. Install Dependencies
+### 2. Install Python and Playwright
 
 ```bash
+sudo apt update
+sudo apt install python3 python3-pip -y
 pip install -r requirements.txt
 playwright install
 ```
 
-### 3. Add Your Login Info to `.env`
+### 3. Configure Environment Variables
 
-```
-EMAIL=your@email.com
-PASSWORD=yourpassword
-```
+Create a `.env` file:
 
-### 4. Configure Products in `config.yaml`
-
-```yaml
-products:
-  - url: "https://www.popmart.com/us/product/12345"
-    quantity: 2
-  - url: "https://www.popmart.com/us/product/67890"
-    quantity: 1
+```env
+EMAIL=your_email@example.com
+PASSWORD=your_password
+TELEGRAM_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 
-### 5. Run the Bot
+### 4. Configure Products
+
+Edit `config.json` to list products:
+
+```json
+{
+  "headless": true,
+  "max_retries": 5,
+  "products": [
+    {
+      "url": "https://www.popmart.com/us/product/labubu-xxx",
+      "size": "Single box",
+      "quantity": 1
+    }
+  ]
+}
+```
+
+---
+
+## 🚀 Usage
+
+### Manual Run (Headless or Headful)
 
 ```bash
-python popmart_bot.py         # Headless (background)
-python popmart_bot.py --debug # Debug mode (visible browser)
+python3 bot.py
+```
+
+### Auto-Restart Loop (Optional)
+
+```bash
+chmod +x run_forever.sh
+./run_forever.sh
 ```
 
 ---
 
-## ⚙️ `config.yaml` Example
+## 🔁 Auto-Start with systemd (Linux)
 
-```yaml
-login_url: "https://www.popmart.com/us/user/login"
-log_level: "INFO"
-headless: true
-max_retries: 3
-delay_range: [60, 120]
+### 1. Move service file
 
-products:
-  - url: "https://www.popmart.com/us/product/abc123"
-    quantity: 1
+```bash
+sudo cp systemd/popmart-bot.service /etc/systemd/system/
+```
+
+### 2. Edit the service file
+
+Update:
+
+- `User=your_linux_user`
+
+- `WorkingDirectory=/absolute/path/to/popmart-bot`
+
+- `ExecStart=/usr/bin/python3 /absolute/path/to/popmart-bot/bot.py`
+
+
+### 3. Enable and start the service
+
+```bash
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable popmart-bot
+sudo systemctl start popmart-bot
+```
+
+Check status:
+
+```bash
+sudo systemctl status popmart-bot
+```
+
+Logs:
+
+```bash
+journalctl -u popmart-bot -f
 ```
 
 ---
 
-## 📜 Notes
+## 📬 Telegram Alerts
 
-- The bot **auto-restarts** if it crashes
+The bot will notify you on Telegram for:
 
-- Logs are saved in `popmart_bot.log`
+- Product in stock
 
-- `.env` is ignored in Git and **should never be shared**
+- Adding to bag
+
+- Added to bag
+
+- Checkout progress
+
+- Payment initiated
+
+- Purchase success
+
+- Failures or errors
 
 ---
 
-## 🧠 Coming Soon (Optional Upgrades)
+## 🛡️ Notes
 
-- Captcha detection
+- Stealth mode uses `playwright-stealth`
 
-- Telegram/Email alerts
+- No session persistence: each run is fresh
 
-- Proxy support for stealth
+- Works in both headless and headful mode
 
-- Session cookie reuse
-
-- Auto-schedule via cron or systemd
+- Rotate logs after 500 KB (max 3 backups)
 
 ---
 
 ## 📄 License
 
-MIT License — Free to use, share, and modify.
-© 2025 Abu Sinan
+MIT [License](https://github.com/abu-sinan/popmart_bot/blob/main/LICENSE).
