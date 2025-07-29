@@ -9,6 +9,8 @@ A fast, stealthy, and automated checkout bot for [PopMart.com](https://www.popma
 
 - Full browser automation using [Playwright](https://playwright.dev/)
 
+- Stealth mode to bypass anti-bot detection
+
 - Smart login check (only logs in if needed)
 
 - Fresh session on every run (no cookie reuse)
@@ -173,6 +175,8 @@ The bot will notify you on Telegram for:
 ---
 
 ## 🛡️ Notes
+
+- Stealth mode uses `playwright-stealth`
 
 - No session persistence: each run is fresh
 
