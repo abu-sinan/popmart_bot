@@ -5,7 +5,6 @@ import os
 import random
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright
-from playwright_stealth import stealth_async
 import aiohttp
 from logging.handlers import RotatingFileHandler
 
@@ -49,6 +48,15 @@ async def retry_click(page, selector, retries=5, delay=1):
             await asyncio.sleep(delay)
     return False
 
+# Inline stealth patch (no need for playwright-stealth)
+async def apply_stealth(page):
+    await page.add_init_script("""
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        window.navigator.chrome = { runtime: {} };
+        Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
+        Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3]});
+    """)
+
 # Main bot logic
 async def run_bot():
     async with async_playwright() as p:
@@ -59,7 +67,7 @@ async def run_bot():
             locale="en-US"
         )
         page = await context.new_page()
-        await stealth_async(page)
+        await apply_stealth(page)
 
         try:
             await page.goto("https://www.popmart.com/us", timeout=60000)
@@ -106,12 +114,10 @@ async def run_bot():
                         for _ in range(product["quantity"] - 1):
                             await retry_click(page, ".index_countButton__mJU5Q >> text=+")
 
-                        # Add to bag
                         await retry_click(page, "text=ADD TO BAG")
                         await page.wait_for_selector("text=Added To Bag", timeout=10000)
                         await send_telegram("✅ Added to bag. Proceeding to checkout...")
 
-                        # Checkout steps
                         await retry_click(page, "text=View Bag")
                         await retry_click(page, "text=Select all")
                         await retry_click(page, "text=CHECK OUT")
@@ -120,12 +126,10 @@ async def run_bot():
                         await page.wait_for_load_state("networkidle")
                         await asyncio.sleep(2)
 
-                        # Handle "Oops"
                         if await page.locator("text=High order volume").is_visible():
                             await page.click("text=OK")
                             raise Exception("Oops! High order volume.")
 
-                        # Select credit card and pay
                         await send_telegram("💳 Paying with credit card...")
                         await retry_click(page, "text=CreditCard")
                         await retry_click(page, 'button:has-text("Pay")')
