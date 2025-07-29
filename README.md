@@ -174,8 +174,6 @@ The bot will notify you on Telegram for:
 
 ## 🛡️ Notes
 
-- Stealth mode uses `playwright-stealth`
-
 - No session persistence: each run is fresh
 
 - Works in both headless and headful mode
